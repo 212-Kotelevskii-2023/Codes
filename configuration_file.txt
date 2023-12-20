@@ -1,0 +1,22 @@
+Field Parameters
+ The size of the field at the X coordinate (int): 5
+ The size of the field at the Y coordinate (int): 5
+ Resolution of the image when output (double): 0.05
+
+Information about the hills
+ Number of hills (Gaussians) (int): 0
+ Maximum hill height (int): 1
+
+Information about stones
+ Number of stones (hemispheres) (int): 0
+ The maximum height of the stone (double): 0.05
+
+Information about logs
+ Number of logs (half cylinders) (int): 1
+ Maximum diameter of the log (double): 10.0
+ Maximum log length (double): 5.0
+
+Files used in the project
+ File with field coordinates: "Gauss Bell.txt"
+ User file (boundary): "boundary_logs.txt"
+ Server file (control): "control_logs.txt"
