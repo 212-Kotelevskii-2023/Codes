@@ -11,12 +11,9 @@
 #define eps 0.05
 #define eps_offset 0.001
 
-// splot 'C:\Users\Андрей\Desktop\прога на ЭВМ\прога на ЭВМ 3\Rover (без разделения)\Gauss Bell.txt' with lines
-// splot 'C:\Users\Андрей\Desktop\прога на ЭВМ\прога на ЭВМ 3\Rover (без разделения)\Rover way.txt' with lines
-// splot 'C:\Users\Андрей\Desktop\прога на ЭВМ\прога на ЭВМ 3\Rover (без разделения)\Gauss Bell.txt' with lines, 'C:\Users\Андрей\Desktop\прога на ЭВМ\прога на ЭВМ 3\Rover (без разделения)\Rover way.txt' with lines
+// splot 'C:\Users\Андрей\Desktop\прога на ЭВМ\прога на ЭВМ 3\Rover\Gauss Bell.txt' with lines
 
 using namespace std;
-
 
 
 class Hummock {
@@ -98,7 +95,7 @@ public:
 
     double Off_Road_S_plus_Logs(double x, double y, vector<Sphere> &Sp, vector<Log> &Lg);
 
-    void output(ofstream &file, vector<Sphere> &Sp, vector<Log> &Lg, double resolution, vector<double> &coordinates);
+    void output(ofstream &file, vector<Sphere> &Sp, vector<Log> &Lg, double resolution);
 
 private:
     int bells_number; // количество холмов/низин
@@ -107,16 +104,6 @@ private:
     vector<Hummock> Hills; // бездорожье
 };
 
-double find_coordinates(double x, double y, vector<double> &coordinates, int x_bound, int y_bound, double resolution) { // 0.5 0.95 проверить при размерах 10 на 10
-    //double x_num = x_bound / resolution;
-    double y_num = y_bound / resolution;
-    double x0_num = x / resolution;
-    double y0_num = y / resolution;
-
-    int index_p = (int)x0_num * ((int)y_num + 1) + (int)y0_num;
-
-    return coordinates[index_p];
-}
 
 class Boundary {
     friend class Control;
@@ -141,7 +128,7 @@ public:
         return false;
     }
 
-    string read_i_line(int i_line) {
+    string read_i_line(const string &filename, int i_line) {
         ifstream file(configuration_file_name);
 
         string line;
@@ -199,11 +186,11 @@ public:
 
         string line;
 
-        line = read_i_line(line_number + 1);
+        line = read_i_line(configuration_file_name, line_number + 1);
         field_coordinates = find_brackts_word(line);
-        line = read_i_line(line_number + 2);
+        line = read_i_line(configuration_file_name, line_number + 2);
         boundary_logs_name = find_brackts_word(line);
-        line = read_i_line(line_number + 3);
+        line = read_i_line(configuration_file_name, line_number + 3);
         control_logs_name = find_brackts_word(line);
 
         file.close();
@@ -227,11 +214,11 @@ public:
             return false;
 
         string line;
-        line = read_i_line(line_number + 1);
+        line = read_i_line(configuration_file_name, line_number + 1);
         x_field_bound = (int)find_double_in_string(line);
-        line = read_i_line(line_number + 2);
+        line = read_i_line(configuration_file_name, line_number + 2);
         y_field_bound = (int)find_double_in_string(line);
-        line = read_i_line(line_number + 3);
+        line = read_i_line(configuration_file_name, line_number + 3);
         field_resolution = find_double_in_string(line);
 
         file.close();
@@ -254,9 +241,9 @@ public:
             return false;
 
         string line;
-        line = read_i_line(line_number + 1);
+        line = read_i_line(configuration_file_name, line_number + 1);
         f_number_hills = (int)find_double_in_string(line);
-        line = read_i_line(line_number + 2);
+        line = read_i_line(configuration_file_name, line_number + 2);
         f_max_hills_height = (int)find_double_in_string(line);
 
         file.close();
@@ -278,9 +265,9 @@ public:
             return false;
 
         string line;
-        line = read_i_line(line_number + 1);
+        line = read_i_line(configuration_file_name, line_number + 1);
         f_number_stones = (int)find_double_in_string(line);
-        line = read_i_line(line_number + 2);
+        line = read_i_line(configuration_file_name, line_number + 2);
         f_max_stones_height = find_double_in_string(line);
 
         file.close();
@@ -302,11 +289,11 @@ public:
             return false;
 
         string line;
-        line = read_i_line(line_number + 1);
+        line = read_i_line(configuration_file_name, line_number + 1);
         f_number_logs = (int)find_double_in_string(line);
-        line = read_i_line(line_number + 2);
+        line = read_i_line(configuration_file_name, line_number + 2);
         f_max_logs_diam = find_double_in_string(line);
-        line = read_i_line(line_number + 3);
+        line = read_i_line(configuration_file_name, line_number + 3);
         f_max_logs_length = find_double_in_string(line);
 
         file.close();
@@ -369,6 +356,7 @@ private:
 
 };
 
+
 class Control {
 
 public:
@@ -423,330 +411,16 @@ private:
 
 };
 
-class Rover {
-    friend class Processor;
-public:
-    Rover(double R_coord_x, double R_coord_y):
-        R_coord_x(R_coord_x), R_coord_y(R_coord_y) {}
-    Rover() = default;
-
-
-    // directions: NN = 1, NE = 2,..., WW = 7, NW = 8
-    double angle_of_inclination(double x_0, double y_0, vector<double> &coordinates, short direction, int x_bound, int y_bound, double resolution) {
-        double h_1 = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-        double h_2, tg_ang;
-        double Shift = resolution;
-        double Shift_sq = sqrt(2 * Shift * Shift);
-
-        //cout << x_0 << " " << y_0 << " " << find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution) << endl;
-        if (direction == 1 || direction == 5) {
-            y_0 += Shift;
-            h_2 = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-
-            tg_ang = (h_2 - h_1) / Shift;
-        }
-
-        if (direction == 2 || direction == 6) {
-            x_0 += Shift;
-            y_0 += Shift;
-            h_2 = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-
-            tg_ang = (h_2 - h_1) / Shift_sq;
-        }
-
-        if (direction == 3 || direction == 7) {
-            x_0 += Shift;
-            h_2 = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-
-            tg_ang = (h_2 - h_1) / Shift;
-        }
-
-        if (direction == 4 || direction == 8) {
-            x_0 += Shift;
-            y_0 -= Shift;
-            h_2 = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-
-            tg_ang = (h_2 - h_1) / Shift_sq;
-        }
-        //cout << x_0 << " " << y_0 << " " << find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution) << endl;
-
-        tg_ang = abs(tg_ang);
-
-        return atan(tg_ang);
-    }
-
-    bool calculate_clearance(double x_0, double y_0, vector<double> &coordinates, int x_bound, int y_bound, double resolution) {
-        double temp = 0;
-        double current_position = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-        double height_difference = 0;
-
-        for (double i = -0.05; i < 0.1; i += 0.05) {
-            for (double j = -0.05; j < 0.1; j += 0.05) {
-                if (abs(current_position - find_coordinates(x_0 + i, y_0 + j, coordinates, x_bound, y_bound, resolution)) > temp)
-                    temp = abs(current_position - find_coordinates(x_0 + i, y_0 + j, coordinates, x_bound, y_bound, resolution));
-            }
-        }
-
-        //cout << temp << endl;
-        if (temp > clearance)
-            return false;
-        else
-            return true;
-    }
-
-    bool sensor(double x_0, double y_0, short direction, vector<double> &coordinates, int x_bound, int y_bound, double resolution) {
-
-        double A[5];
-        double B[7];
-        double C[9];
-
-        double start_pos = find_coordinates(x_0, y_0, coordinates, x_bound, y_bound, resolution);
-        double max_difference = 0;
-
-        switch (direction) {
-            case 1:
-                for (int i = 0; i < 5; i++)
-                    A[i] = find_coordinates(x_0 - 0.1 + 0.05 * i, y_0 + 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 7; i++)
-                    B[i] = find_coordinates(x_0 - 0.15 + 0.05 * i, y_0 + 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 9; i++)
-                    C[i] = find_coordinates(x_0 - 0.2 + 0.05 * i, y_0 + 0.2, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 2:
-                for (int i = 0; i < 3; i++)
-                    A[i] = find_coordinates(x_0 + i * 0.05, y_0 + 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 3; i < 5; i++)
-                    A[i] = find_coordinates(x_0 + 0.1, y_0 + 0.1 - (i - 2) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 4; i++)
-                    B[i] = find_coordinates(x_0 + i * 0.05, y_0 + 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 4; i < 7; i++)
-                    B[i] = find_coordinates(x_0 + 0.15, y_0 + 0.15 - (i - 3) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 5; i++)
-                    C[i] = find_coordinates(x_0 + i * 0.05, y_0 + 0.2, coordinates, x_bound, y_bound, resolution);
-                for (int i = 5; i < 9; i++)
-                    C[i] = find_coordinates(x_0 + 0.2, y_0 + 0.2 - (i - 4) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 3:
-                for (int i = 0; i < 5; i++)
-                    A[i] = find_coordinates(x_0 + 0.1, y_0 - 0.1 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 7; i++)
-                    B[i] = find_coordinates(x_0 + 0.15, y_0 - 0.15 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 9; i++)
-                    C[i] = find_coordinates(x_0 + 0.2, y_0 - 0.2 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 4:
-                for (int i = 0; i < 3; i++)
-                    A[i] = find_coordinates(x_0 + i * 0.05, y_0 - 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 3; i < 5; i++)
-                    A[i] = find_coordinates(x_0 + 0.1, y_0 - 0.1 + (i - 2) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 4; i++)
-                    B[i] = find_coordinates(x_0 + i * 0.05, y_0 - 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 4; i < 7; i++)
-                    B[i] = find_coordinates(x_0 + 0.15, y_0 - 0.15 + (i - 3) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 5; i++)
-                    C[i] = find_coordinates(x_0 + i * 0.05, y_0 - 0.2, coordinates, x_bound, y_bound, resolution);
-                for (int i = 5; i < 9; i++)
-                    C[i] = find_coordinates(x_0 + 0.2, y_0 - 0.2 + (i - 4) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 5:
-                for (int i = 0; i < 5; i++)
-                    A[i] = find_coordinates(x_0 - 0.1 + 0.05 * i, y_0 - 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 7; i++)
-                    B[i] = find_coordinates(x_0 - 0.15 + 0.05 * i, y_0 - 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 9; i++)
-                    C[i] = find_coordinates(x_0 - 0.2 + 0.05 * i, y_0 - 0.2, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 6:
-                for (int i = 0; i < 3; i++)
-                    A[i] = find_coordinates(x_0 - i * 0.05, y_0 - 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 3; i < 5; i++)
-                    A[i] = find_coordinates(x_0 - 0.1, y_0 - 0.1 + (i - 2) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 4; i++)
-                    B[i] = find_coordinates(x_0 - i * 0.05, y_0 - 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 4; i < 7; i++)
-                    B[i] = find_coordinates(x_0 - 0.15, y_0 - 0.15 + (i - 3) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 5; i++)
-                    C[i] = find_coordinates(x_0 - i * 0.05, y_0 - 0.2, coordinates, x_bound, y_bound, resolution);
-                for (int i = 5; i < 9; i++)
-                    C[i] = find_coordinates(x_0 - 0.2, y_0 - 0.2 + (i - 4) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 7:
-                for (int i = 0; i < 5; i++)
-                    A[i] = find_coordinates(x_0 - 0.1, y_0 - 0.1 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 7; i++)
-                    B[i] = find_coordinates(x_0 - 0.15, y_0 - 0.15 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-                for (int i = 0; i < 9; i++)
-                    C[i] = find_coordinates(x_0 - 0.2, y_0 - 0.2 + 0.05 * i, coordinates, x_bound, y_bound, resolution);
-
-                break;
-            case 8:
-                for (int i = 0; i < 3; i++)
-                    A[i] = find_coordinates(x_0 - i * 0.05, y_0 + 0.1, coordinates, x_bound, y_bound, resolution);
-                for (int i = 3; i < 5; i++)
-                    A[i] = find_coordinates(x_0 - 0.1, y_0 + 0.1 - (i - 2) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 4; i++)
-                    B[i] = find_coordinates(x_0 - i * 0.05, y_0 + 0.15, coordinates, x_bound, y_bound, resolution);
-                for (int i = 4; i < 7; i++)
-                    B[i] = find_coordinates(x_0 - 0.15, y_0 + 0.15 - (i - 3) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                for (int i = 0; i < 5; i++)
-                    C[i] = find_coordinates(x_0 - i * 0.05, y_0 + 0.2, coordinates, x_bound, y_bound, resolution);
-                for (int i = 5; i < 9; i++)
-                    C[i] = find_coordinates(x_0 - 0.2, y_0 + 0.2 - (i - 4) * 0.05, coordinates, x_bound, y_bound, resolution);
-
-                break;
-        }
-
-        for (int i = 0; i < 5; i++) {
-            if (abs(A[i] - start_pos) >= max_difference)
-                max_difference = abs(A[i] - start_pos);
-        }
-        for (int i = 0; i < 7; i++) {
-            if (abs(B[i] - start_pos) >= max_difference)
-                max_difference = abs(B[i] - start_pos);
-        }
-        for (int i = 0; i < 9; i++) {
-            if (abs(C[i] - start_pos) >= max_difference)
-                max_difference = abs(C[i] - start_pos);
-        }
-
-        /*for (int i = 0; i < 5; i++)
-            cout << A[i] << " ";
-        cout << endl;*/
-
-        if (max_difference < clearance)
-            return true;
-        else
-            return false;
-    }
-
-private:
-    double R_coord_x;
-    double R_coord_y;
-    //double R_coord_z;
-    double clearance = 0.05;
-    short initial_direction = 1; // directions: NN = 1, NE = 2,..., WW = 7, NW = 8
-    double velocity = 0.1;
-
-    double limit_angle = 1.58;
-
-};
-
-class Processor : public Rover {
-
-public:
-    Processor(double rov_start_coord_x, double rov__start_coord_y, short rov_start_direction, int x_p_bound, int y_p_bound, double p_resolution):
-        rov_start_coord_x(rov_start_coord_x), rov_start_coord_y(rov_start_coord_y), rov_start_direction(rov_start_direction), x_p_bound(x_p_bound), y_p_bound(y_p_bound), p_resolution(p_resolution) {}
-    Processor() = default;
-
-    void find_way(ofstream &file, double current_x, double current_y, short current_direction, vector<double> &coordinates) { // начальное направлени можно убрать
-        int path_length = 100;
-        file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-
-        while(path_length--) {
-            if (current_x < 4 * p_resolution || current_x > x_p_bound - 4 * p_resolution || current_y < p_resolution || current_y > y_p_bound - 4 * p_resolution) { // проверка принадлежности полю
-                //file << -1 << " " << -1 << " " << -1;
-                cout << "Вышел за пределы поля" << endl;;
-                break;
-            }
-
-            if (calculate_clearance(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution)) {
-                int k = 1;
-
-                for (short i = 1; i < 9; i++) {
-                    if (angle_of_inclination(current_x, current_y, coordinates, i, x_p_bound, y_p_bound, p_resolution) < limit_angle && sensor(current_x, current_y, i, coordinates, x_p_bound, y_p_bound, p_resolution)) {
-                        switch (i) {
-                        case 1:
-                            current_y += p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 2:
-                            current_x += p_resolution;
-                            current_y += p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 3:
-                            current_x += p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 4:
-                            current_x += p_resolution;
-                            current_y -= p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 5:
-                            current_y -= p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 6:
-                            current_x -= p_resolution;
-                            current_y -= p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 7:
-                            current_x -= p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        case 8:
-                            current_x -= p_resolution;
-                            current_y += p_resolution;
-                            file << current_x << " " << current_y << " " << find_coordinates(current_x, current_y, coordinates, x_p_bound, y_p_bound, p_resolution) << endl;
-                            break;
-                        }
-
-                        break;
-                    }
-                k++;
-                }
-
-                if (k > 8) {
-                    //file << -3 << " " << -3 << " " << -3; // нет пути ни в какую сторону
-                    cout << "Не может никуда проехать" << endl;
-                    break;
-                }
-            }
-            else {
-                //file << -2 << " " << -2 << " " << -2; // попали в яму, из которой нельзя выбраться
-                cout << "Попал в яму, из которой не может выбраться" << endl;
-                break;
-            }
-
-        }
-    }
-
-private:
-    double rov_start_coord_x;
-    double rov_start_coord_y;
-    //double rov_start_coord_z;
-    short rov_start_direction;
-
-    int x_p_bound;
-    int y_p_bound;
-    double p_resolution;
-
-    //short initial_direction;
-};
-
-
 int main() {
-    setlocale(LC_ALL, "Russian");
 
-    /*string conf_f_name = "configuration_file.txt";
+    //string conf_f_name = "configuration_file.txt";
 
+    //Boundary *B = new Boundary(conf_f_name);
     Control *C = new Control;
+
+    /* B->filling_in_parameters();
+    B->show(); */
+    //B->read_files_information();
 
     C->record_filenames();
     C->create_field();
@@ -754,51 +428,33 @@ int main() {
     C->create_stones();
     C->create_logs();
 
-    delete C;*/
+    //delete B;
+    delete C;
 
+    /* //srand(time(NULL));
+    ofstream fout("Gauss Bell.txt");
 
-    //srand(time(NULL));
-    ofstream fout1("Gauss Bell.txt");
-
-    int X_B, Y_B; X_B = Y_B = 10;
+    int X_B, Y_B; X_B = Y_B = 5;
     double resolution = 0.05;
-    vector<double> coordinates;
 
-    Off_road *Or = new Off_road(10, 10, X_B, Y_B);
+    Off_road *Or = new Off_road(0, 1, X_B, Y_B);
     Or->Random();
 
     vector<Sphere> Sp;
-    Stone *St = new Stone(0, 0.3, Or->x_bound, Or->y_bound);
+    Stone *St = new Stone(0, 0.05, Or->x_bound, Or->y_bound);
     St->Stones_Random(Sp);
 
     vector<Log> Lg;
-    Logs *Ls = new Logs(0, 0.15, Or->x_bound, Or->y_bound, 0.5);
+    Logs *Ls = new Logs(1, 10, Or->x_bound, Or->y_bound, 5);
     Ls->Logs_Random(Lg);
 
-    Or->output(fout1, Sp, Lg, resolution, coordinates);
+    Or->output(fout, Sp, Lg, resolution);
 
     delete Or;
     delete St;
     delete Ls;
 
-    fout1.close();
-
-    //cout << find_coordinates(0.5, 1.95, coordinates, X_B, Y_B, resolution);
-
-
-    ofstream fout2("Rover way.txt");
-    Processor *Pr = new Processor(5, 5, 1, X_B, Y_B, resolution);
-    Pr->find_way(fout2, 5, 5, 1, coordinates);
-
-    delete Pr;
-    fout2.close();
-
-
-    /*Rover *Rov = new Rover(0,0);
-    cout << Rov->angle_of_inclination(1.1, 2.15, coordinates, 4, X_B, Y_B, resolution);
-    cout << Rov->calculate_clearance(1, 1, coordinates, X_B, Y_B, resolution);
-    cout << Rov->sensor(1, 1, 1, coordinates, X_B, Y_B, resolution);
-    delete Rov;*/
+    fout.close(); */
 
 
     return 0;
@@ -829,7 +485,7 @@ Sphere::Sphere() = default;
 
 Stone::Stone(int stones_number, double max_radius, int stone_x_bound, int stone_y_bound):
         stones_number(stones_number), max_radius(max_radius), stone_x_bound(stone_x_bound), stone_y_bound(stone_y_bound) {}
-Stone::Stone() = default; // default
+Stone::Stone() {}; // default
 
 void Stone::Stones_Random(vector<Sphere> &Sp) {
     double x_0, y_0, R_0;
@@ -894,9 +550,9 @@ void Off_road::Random() {  // генерация параметров
 
 Off_road::Off_road(int bells_number, int max_height, int x_bound, int y_bound):
         bells_number(bells_number), max_height(max_height),  x_bound(x_bound), y_bound(y_bound) {}
-Off_road::Off_road() = default; // default
+Off_road::Off_road() {} // default
 
-double Off_road::Comp_Gauss_Bell(double x, double y) { // координаты точки на бездорожье
+double Off_road::Comp_Gauss_Bell(double x, double y) { // координаты точке на бездорожье
     double H = 0;
 
     for (int i = 0; i < (int)Hills.size(); i++) {
@@ -946,13 +602,15 @@ double Off_road::Off_Road_S_plus_Logs(double x, double y, vector<Sphere> &Sp, ve
     return H;
 }
 
-void Off_road::output(ofstream &file, vector<Sphere> &Sp, vector<Log> &Lg, double resolution, vector<double> &coordinates) {  // вывод координат композиции Гауссианов в файл
-    for (double i = 0; i < x_bound + resolution; i += resolution) {
-        for (double j = 0; j < y_bound + resolution; j += resolution) {
+void Off_road::output(ofstream &file, vector<Sphere> &Sp, vector<Log> &Lg, double resolution) {  // вывод координат композиции Гауссианов в файл
+    for (double i = -5; i <= x_bound + 5; i += resolution) {
+        for (double j = -5; j <= y_bound + 5; j += resolution) {
             file << i << " " << j << " " << Off_Road_S_plus_Logs(i, j, Sp, Lg) << endl;
-            coordinates.push_back(Off_Road_S_plus_Logs(i, j, Sp, Lg));
         }
     }
 }
+
+
+
 
 
